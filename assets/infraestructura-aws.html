@@ -1,0 +1,246 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="render-width" content="1000">
+<meta name="render-pad" content="20">
+<title>Proyecto · Infraestructura AWS</title>
+<!--
+  PLANTILLA: diagrama de infraestructura AWS (estilo propuesta SpaceDev), pensada para insertarse a 468 pt de ancho.
+  Legibilidad (pt en el documento = px ÷ 1000 × 468):
+  - render-width 1000. Texto mínimo 14 px (6,5 pt): subtítulos, etiquetas de flecha, títulos de zona.
+  - Nombres de servicio, paneles y franja de soporte 16,5 px (7,7 pt). Títulos de contenedor 15 px.
+  - Siglas dentro del ícono 12 px en negrita (ícono de 36 px). No achicar nada: si no entra, se quita contenido.
+  - Alto/ancho ≤ 1,4 (con el epígrafe tiene que entrar en una página).
+  Reglas de contenido (references/imagenes.md, "Infraestructura AWS"):
+  - Sin título, subtítulo ni pie: el epígrafe del documento ya lo dice. Leyenda solo si sobra espacio.
+  - Sin leyenda, la línea punteada (dash) se reserva para lo OPCIONAL: borde punteado (class "opt")
+    y "(opcional)" en el nombre, y lo mismo en sus flechas.
+  - Soporte (ECR, Secrets Manager, KMS, CloudWatch, CloudTrail) en UNA franja con íconos y UNA conexión
+    a la VPC sin punta (noArrow): logs y auditoría salen de la VPC.
+  - WAF asociado a un ALB es regional: dentro de la región, delante del ALB (solo con CloudFront va al perímetro).
+  - ALB y grupo de subredes de RDS exigen subredes en dos zonas, aunque el cómputo sea Single-AZ.
+    En ese caso: una sola .az con el rótulo "Cómputo y base en una zona<small>subredes en dos zonas</small>".
+  - Subredes privadas con salida: NAT Gateway en la subred pública con flecha de salida a internet
+    (o endpoints de interfaz; el texto nombra el mecanismo elegido).
+  - Servicios regionales fuera de la VPC (S3, SQS, SNS, Bedrock, Cognito) conectados desde el contenedor
+    de la subred cuando los usan varios servicios. Endpoints: S3 gateway; Bedrock, SQS y otros de interfaz.
+  - Solo los servicios que nombra el texto, con su nombre oficial. Etiquetas de flecha de 1 a 4 palabras.
+  Cómo adaptarla:
+  - Todo se posiciona en coordenadas absolutas dentro de .stage (1000 × alto calculado).
+    Cada elemento es hijo directo de .stage con left/top/width/height en px.
+  - Contenedores (.ctr): cloud, region, vpc, az, pub, priv. Se dibujan detrás. <span class="t r"> pone el
+    título a la derecha (para que no lo cruce una flecha). Una flecha puede apuntar a un contenedor con id.
+  - Servicios (.svc): data-c = net | compute | db | storage | sec | int | mgmt | ml (color de categoría AWS).
+    <i> sigla del ícono, <b> nombre, <small> subtítulo de 2 a 4 palabras (solo si informa).
+  - Franja de soporte (.support): <li><i data-c="...">SIGLA</i>Nombre</li>.
+  - Actores externos (.panel.ext) arriba y abajo, fuera de AWS Cloud.
+  - Conectores: lista LINKS al final, anclados a ids. Dos cajas en línea recta: centros alineados al píxel
+    (anclar con "#id" y el mismo desplazamiento en los dos extremos).
+  - Un aviso rojo arriba a la izquierda ("desborda #id", "falta #id") indica que algo no entra: corregir antes de entregar.
+  - Quitar lo que el proyecto no use y renombrar con los componentes reales del texto.
+-->
+<style>
+:root{
+  --ink:#16191f; --muted:#4f5a68; --line:#4a5363;
+  --aws:#232f3e; --region:#147eba; --vpc:#8c4fff;
+  --pub:#7aa116; --pub-bg:#f4f8ea; --priv:#147eba; --priv-bg:#eaf3fa;
+  --c-net:#8c4fff; --c-compute:#ed7100; --c-db:#c925d1; --c-storage:#7aa116;
+  --c-sec:#dd344c; --c-int:#e7157b; --c-mgmt:#e7157b; --c-ml:#01a88d;
+  --ext:#2f3a4a;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#fff;color:var(--ink);font-family:"Noto Sans","Inter","Liberation Sans",sans-serif;-webkit-font-smoothing:antialiased}
+.stage{position:relative;width:1000px;height:1100px}
+.stage>*{position:absolute}
+
+/* Contenedores */
+.ctr{z-index:1;border-radius:10px}
+.ctr>.t{position:absolute;left:12px;top:7px;font-size:15px;font-weight:700;line-height:1.25}
+.ctr>.t.r{left:auto;right:12px;text-align:right}
+.ctr.cloud{border:2.5px solid var(--aws);border-radius:12px}
+.ctr.cloud>.t,.ctr.vpc>.t{left:-2px;top:-2px;padding:5px 18px 5px 14px;color:#fff;border-radius:10px 0 10px 0}
+.ctr.cloud>.t{background:var(--aws)}
+.ctr.region{border:2px dashed var(--region)}
+.ctr.region>.t{color:var(--region)}
+.ctr.vpc{border:2.5px solid var(--vpc)}
+.ctr.vpc>.t{background:var(--vpc)}
+.ctr.az{border:1.6px dashed #5aa9d6}
+.ctr.az>.t{color:var(--region);font-weight:600;font-style:italic;font-size:14px;top:5px}
+.ctr.az>.t small{display:block;font-size:14px;font-weight:400}
+.ctr.pub{border:1.6px solid var(--pub);background:var(--pub-bg)}
+.ctr.pub>.t{color:#3d5a00}
+.ctr.priv{border:1.6px solid var(--priv);background:var(--priv-bg)}
+.ctr.priv>.t{color:var(--priv)}
+.ctr.priv>.t small{display:block;color:#b35600;font-size:14px;font-weight:600}
+
+/* Servicios */
+.svc{z-index:3;background:#fff;border:1.8px solid var(--c);border-radius:6px;padding:7px 10px;
+  display:grid;grid-template-columns:36px 1fr;column-gap:9px;align-content:center;align-items:center}
+.svc>i,.support i{width:36px;height:36px;border-radius:6px;background:var(--c);color:#fff;font-style:normal;
+  font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;letter-spacing:.02em;flex:none}
+.svc>i{grid-row:span 2}
+.svc>b{font-size:16.5px;line-height:1.2;font-weight:700}
+.svc>i:first-child+b:last-child{grid-row:span 2}
+.svc>small{font-size:14px;color:var(--muted);line-height:1.25;margin-top:2px;align-self:start}
+.svc.opt{border-style:dashed}
+[data-c=net]{--c:var(--c-net)} [data-c=compute]{--c:var(--c-compute)} [data-c=db]{--c:var(--c-db)}
+[data-c=storage]{--c:var(--c-storage)} [data-c=sec]{--c:var(--c-sec)} [data-c=int]{--c:var(--c-int)}
+[data-c=mgmt]{--c:var(--c-mgmt)} [data-c=ml]{--c:var(--c-ml)}
+
+/* Franja de soporte */
+.support{z-index:3;background:#fff;border:1.8px solid #8a929c;border-radius:6px;padding:8px 12px;display:flex;align-items:center;gap:14px}
+.support>h4{font-size:16.5px;font-weight:700;padding-right:14px;border-right:1.6px solid #c9d0d8;align-self:stretch;display:flex;align-items:center}
+.support>ul{list-style:none;display:flex;flex-wrap:wrap;gap:8px 18px}
+.support li{font-size:16.5px;font-weight:600;line-height:1.2;display:flex;align-items:center;gap:8px;white-space:nowrap}
+
+/* Actores externos */
+.panel{z-index:3;background:#fff;border-radius:8px}
+.panel.ext{border:2px solid var(--ext);overflow:hidden}
+.panel.ext>h4{background:var(--ext);color:#fff;text-align:center;padding:8px 10px;font-size:16.5px;line-height:1.2;font-weight:700}
+
+/* Conectores */
+svg.wires{position:absolute;left:0;top:0;z-index:2;overflow:visible}
+.lbl{z-index:4;font-size:14px;color:#2f3640;background:#fff;padding:0 4px;line-height:1.3;white-space:nowrap}
+.lbl.ml{white-space:normal;text-align:center}
+.err{z-index:9;left:10px;top:10px;color:#c00;font:700 16px monospace;background:#fee;padding:6px}
+</style>
+</head>
+<body>
+<div class="stage" id="stage">
+
+  <!-- Actores externos, arriba -->
+  <div class="panel ext" id="ext" style="left:278px;top:12px;width:180px"><h4>Proveedor externo</h4></div>
+  <div class="panel ext" id="users" style="left:511px;top:12px;width:180px"><h4>Usuarios</h4></div>
+
+  <!-- AWS -->
+  <div class="ctr cloud" style="left:8px;top:96px;width:984px;height:900px"><span class="t">AWS Cloud</span></div>
+  <div class="ctr region" style="left:22px;top:138px;width:956px;height:844px"><span class="t">Región · us-east-1</span></div>
+
+  <div class="svc" data-c="sec" id="waf" style="left:511px;top:176px;width:180px;height:64px"><i>WAF</i><b>AWS WAF</b><small>regional</small></div>
+  <div class="svc" data-c="sec" id="cognito" style="left:794px;top:176px;width:160px;height:64px"><i>COG</i><b>Amazon Cognito</b></div>
+
+  <div class="ctr vpc" id="vpc" style="left:240px;top:272px;width:722px;height:572px"><span class="t">VPC</span></div>
+  <div class="ctr az" style="left:254px;top:306px;width:340px;height:524px"><span class="t r">Zona de disponibilidad a</span></div>
+  <div class="ctr az" style="left:608px;top:306px;width:340px;height:524px"><span class="t">Zona de disponibilidad b</span></div>
+
+  <div class="ctr pub" style="left:266px;top:340px;width:316px;height:116px"><span class="t r">Subred pública</span></div>
+  <div class="ctr pub" style="left:620px;top:340px;width:316px;height:116px"><span class="t">Subred pública</span></div>
+  <div class="svc" data-c="net" id="nat-a" style="left:278px;top:376px;width:180px;height:64px"><i>NAT</i><b>NAT Gateway</b><small>IP elástica</small></div>
+  <div class="svc" data-c="net" id="alb" style="left:504px;top:376px;width:194px;height:64px"><i>ALB</i><b>Application Load Balancer</b></div>
+  <div class="svc" data-c="net" id="nat-b" style="left:744px;top:376px;width:180px;height:64px"><i>NAT</i><b>NAT Gateway</b><small>IP elástica</small></div>
+
+  <div class="ctr priv" id="app-a" style="left:266px;top:476px;width:316px;height:204px"><span class="t">Subred privada · aplicación<small>Amazon ECS · Fargate</small></span></div>
+  <div class="ctr priv" id="app-b" style="left:620px;top:476px;width:316px;height:204px"><span class="t r">Subred privada · aplicación<small>Amazon ECS · Fargate</small></span></div>
+  <div class="svc" data-c="compute" id="wrk-a" style="left:278px;top:572px;width:140px;height:58px"><i>ECS</i><b>Worker</b></div>
+  <div class="svc" data-c="compute" id="api-a" style="left:430px;top:572px;width:140px;height:58px"><i>ECS</i><b>API</b></div>
+  <div class="svc" data-c="compute" id="api-b" style="left:632px;top:572px;width:140px;height:58px"><i>ECS</i><b>API</b></div>
+  <div class="svc" data-c="compute" id="wrk-b" style="left:784px;top:572px;width:140px;height:58px"><i>ECS</i><b>Worker</b></div>
+
+  <div class="ctr priv" style="left:266px;top:700px;width:316px;height:116px"><span class="t">Subred privada · datos</span></div>
+  <div class="ctr priv" style="left:620px;top:700px;width:316px;height:116px"><span class="t r">Subred privada · datos</span></div>
+  <div class="svc" data-c="db" id="rds" style="left:330px;top:736px;width:240px;height:64px"><i>RDS</i><b>RDS PostgreSQL</b><small>instancia primaria</small></div>
+  <div class="svc" data-c="db" id="rds-sb" style="left:632px;top:736px;width:240px;height:64px"><i>RDS</i><b>RDS PostgreSQL</b><small>réplica standby</small></div>
+
+  <!-- Servicios regionales fuera de la VPC -->
+  <div class="svc" data-c="storage" id="s3" style="left:38px;top:486px;width:186px;height:62px"><i>S3</i><b>Amazon S3</b><small>archivos</small></div>
+  <div class="svc" data-c="int" id="sqs" style="left:38px;top:558px;width:186px;height:62px"><i>SQS</i><b>Amazon SQS</b><small>colas de trabajo</small></div>
+  <div class="svc opt" data-c="int" id="sns" style="left:38px;top:630px;width:186px;height:62px"><i>SNS</i><b>Amazon SNS (opcional)</b></div>
+
+  <!-- Soporte -->
+  <div class="support" id="support" style="left:38px;top:874px;width:924px"><h4>Soporte</h4><ul>
+    <li><i data-c="compute">ECR</i>Amazon ECR</li><li><i data-c="sec">SM</i>AWS Secrets Manager</li><li><i data-c="sec">KMS</i>AWS KMS</li>
+    <li><i data-c="mgmt">CW</i>Amazon CloudWatch</li><li><i data-c="mgmt">CT</i>AWS CloudTrail</li></ul></div>
+
+  <!-- Actores externos, abajo -->
+  <div class="panel ext" id="cicd" style="left:38px;top:1040px;width:330px"><h4>Bitbucket Pipelines + AWS CDK</h4></div>
+</div>
+
+<script>
+/* Conectores ortogonales anclados a ids.
+   from/to: ["id", "top|bottom|left|right", f, off]  o  [x, y] absoluto.
+     f = fracción a lo largo del lado (0..1, por defecto .5) o "#otro-id" para alinear con el centro de ese elemento.
+     off = desplazamiento en px a lo largo del lado (para dos flechas paralelas o para alinear fuera del centro).
+   via: puntos intermedios absolutos; los tramos inicial y final se completan en ángulo recto.
+   mid: coordenada del tramo intermedio cuando ambos lados son paralelos.
+   label/lx/ly: texto (14 px); sin lx/ly va centrado sobre el tramo más largo; con lx y sin ly va sobre el tramo horizontal más largo.
+     rot: texto vertical. ml: texto en dos líneas.
+   dash: línea punteada, solo para lo opcional (sin leyenda). noArrow: sin punta. Los cruces dibujan un salto. */
+const LINKS = [
+  {from:["users","bottom"], to:["waf","top","#users"], label:"HTTPS", lx:609, ly:110},
+  {from:["users","right"], to:["cognito","top"], label:"inicio de sesión", lx:716, ly:6},
+  {from:["waf","bottom"], to:["alb","top","#waf"]},
+  {from:["alb","bottom","#api-a",36], to:["api-a","top",.5,36]},
+  {from:["alb","bottom","#api-b",-36], to:["api-b","top",.5,-36]},
+  {from:["nat-a","top"], to:["ext","bottom","#nat-a"]},
+  {from:["nat-b","top"], via:[[834,256],[368,256]], to:["ext","bottom","#nat-a"], label:"salida a internet", lx:388, ly:234},
+  {from:["app-a","left","#s3"], to:["s3","right"]},
+  {from:["app-a","left","#sqs"], to:["sqs","right"]},
+  {from:["app-a","left","#sns"], to:["sns","right"], dash:true},
+  {from:["api-a","bottom",.5,36], to:["rds","top","#api-a",36], label:"SQL", lx:492, ly:708},
+  {from:["api-b","bottom",.5,-36], to:["rds","top","#api-a",36], mid:690},
+  {from:["rds","right"], to:["rds-sb","left"]},
+  {from:["support","top","#vpc"], to:["vpc","bottom"], noArrow:true, label:"imágenes · secretos · logs · auditoría", lx:612, ly:849},
+  {from:["cicd","top"], to:["support","bottom","#cicd"], label:"imágenes y despliegue", lx:211, ly:1012},
+];
+</script>
+<script>
+(function(){
+  const S=document.getElementById("stage"), NS="http://www.w3.org/2000/svg", errs=[];
+  function rect(id){const e=document.getElementById(id); if(!e){errs.push("falta #"+id); return {x:0,y:0,w:0,h:0};}
+    const r=e.getBoundingClientRect(), s=S.getBoundingClientRect(); return {x:r.left-s.left,y:r.top-s.top,w:r.width,h:r.height};}
+  /* Posiciones dependientes: data-align (centro vertical) y data-below (debajo de otro elemento). */
+  S.querySelectorAll("[data-align],[data-below]").forEach(e=>{
+    if(e.dataset.align){const t=rect(e.dataset.align); e.style.top=(t.y+t.h/2-e.offsetHeight/2)+"px";}
+    if(e.dataset.below){const t=rect(e.dataset.below); e.style.top=(t.y+t.h+(+e.dataset.gap||30))+"px";} });
+  S.style.height=Math.max(...[...S.children].map(e=>e.offsetTop+e.offsetHeight))+10+"px";
+  const vert=s=>s==="top"||s==="bottom";
+  function end(spec){ if(typeof spec[0]==="number") return {p:spec,side:null};
+    const b=rect(spec[0]), side=spec[1], f=spec[2]??.5, off=spec[3]||0; let t;
+    if(typeof f==="string"){const r=rect(f.replace(/^#/,"")); t=vert(side)?r.x+r.w/2:r.y+r.h/2;} else t=vert(side)?b.x+b.w*f:b.y+b.h*f;
+    t+=off;
+    return {p: side==="top"?[t,b.y]: side==="bottom"?[t,b.y+b.h]: side==="left"?[b.x,t]:[b.x+b.w,t], side}; }
+  function route(L){ const a=end(L.from), b=end(L.to);
+    if(L.via){ const v=L.via, out=[a.p], f=v[0], l=v[v.length-1];
+      if(Math.abs(a.p[0]-f[0])>=1&&Math.abs(a.p[1]-f[1])>=1) out.push(vert(a.side)?[a.p[0],f[1]]:[f[0],a.p[1]]);
+      out.push(...v);
+      if(Math.abs(b.p[0]-l[0])>=1&&Math.abs(b.p[1]-l[1])>=1) out.push(vert(b.side)?[b.p[0],l[1]]:[l[0],b.p[1]]);
+      return [...out,b.p]; }
+    const [p1,p2]=[a.p,b.p], s1=a.side??(b.side&&vert(b.side)?"top":"left"), s2=b.side??s1;
+    if(Math.abs(p1[0]-p2[0])<1||Math.abs(p1[1]-p2[1])<1) return [p1,p2];
+    if(vert(s1)&&vert(s2)){const m=L.mid??(p1[1]+p2[1])/2; return [p1,[p1[0],m],[p2[0],m],p2];}
+    if(!vert(s1)&&!vert(s2)){const m=L.mid??(p1[0]+p2[0])/2; return [p1,[m,p1[1]],[m,p2[1]],p2];}
+    return vert(s1)?[p1,[p1[0],p2[1]],p2]:[p1,[p2[0],p1[1]],p2]; }
+  const paths=LINKS.map(route);
+  const svg=document.createElementNS(NS,"svg"); svg.setAttribute("class","wires");
+  svg.setAttribute("width",S.offsetWidth); svg.setAttribute("height",S.offsetHeight);
+  svg.innerHTML='<defs><marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10z" fill="#4a5363"/></marker><marker id="ahd" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10z" fill="#8a929c"/></marker></defs>';
+  const verts=[];
+  paths.forEach((pts,i)=>{ for(let k=1;k<pts.length;k++) if(Math.abs(pts[k-1][0]-pts[k][0])<1) verts.push({i,x:pts[k][0],y1:pts[k-1][1],y2:pts[k][1]}); });
+  paths.forEach((pts,i)=>{ const L=LINKS[i]; let d="M"+pts[0].join(",");
+    for(let k=1;k<pts.length;k++){ const [x1,y1]=pts[k-1],[x2,y2]=pts[k];
+      if(Math.abs(y1-y2)<1){ const dir=Math.sign(x2-x1);
+        verts.filter(v=>v.i!==i&&v.x>Math.min(x1,x2)+8&&v.x<Math.max(x1,x2)-8&&y1>Math.min(v.y1,v.y2)+2&&y1<Math.max(v.y1,v.y2)-2)
+          .map(v=>v.x).sort((a,b)=>(a-b)*dir).forEach(x=>{d+=` L${x-6*dir},${y1} A6,6 0 0 ${dir>0?1:0} ${x+6*dir},${y1}`;}); }
+      d+=" L"+x2+","+y2; }
+    const p=document.createElementNS(NS,"path"); p.setAttribute("d",d); p.setAttribute("fill","none");
+    p.setAttribute("stroke",L.dash?"#8a929c":"#4a5363"); p.setAttribute("stroke-width","1.8"); p.setAttribute("stroke-linejoin","round");
+    if(L.dash) p.setAttribute("stroke-dasharray","6 5");
+    if(!L.noArrow) p.setAttribute("marker-end",L.dash?"url(#ahd)":"url(#ah)");
+    svg.appendChild(p);
+    if(L.label){ const t=document.createElement("div"); t.className="lbl"+(L.ml?" ml":""); t.textContent=L.label;
+      let x=L.lx, y=L.ly;
+      if(x==null||y==null){ let best=-1, bx, by;
+        for(let k=1;k<pts.length;k++){ const h=Math.abs(pts[k][1]-pts[k-1][1])<1, len=Math.hypot(pts[k][0]-pts[k-1][0],pts[k][1]-pts[k-1][1]);
+          if((x==null||h)&&len>best){best=len; bx=(pts[k][0]+pts[k-1][0])/2; by=(pts[k][1]+pts[k-1][1])/2;} }
+        if(x==null){x=bx; y=by; t.style.transform="translate(-50%,-115%)";} else y=by-17; }
+      if(L.ml) t.style.width="80px", t.style.whiteSpace="normal", t.style.textAlign="center";
+      if(L.rot) t.style.transform="rotate(-90deg)", t.style.transformOrigin="left top";
+      t.style.left=x+"px"; t.style.top=y+"px"; S.appendChild(t); } });
+  S.appendChild(svg);
+  S.querySelectorAll(".svc,.panel,.support").forEach(e=>{ if(e.scrollHeight>e.clientHeight+1||e.scrollWidth>e.clientWidth+1) errs.push("desborda #"+(e.id||e.textContent.trim().slice(0,20))); });
+  if(errs.length){const e=document.createElement("div"); e.className="err"; e.textContent=errs.join(" · "); S.appendChild(e);}
+})();
+</script>
+</body>
+</html>

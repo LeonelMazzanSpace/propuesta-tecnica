@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="render-width" content="1064">
+<meta name="render-pad" content="12">
+<title>Proyecto · Tablero de operación</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<!--
+  PLANTILLA: mockup de pantalla de escritorio, legible a 468 pt de ancho en el documento.
+  - Un archivo por pantalla: pantalla-NN-slug.html.
+  - Back-office: solo escritorio. Artboard de 1040 px, render-width 1064, render-pad 12.
+    Si hace falta mobile, va como imagen aparte con su propio artboard de 390 px y la misma escala tipográfica.
+  - Escala: mínimo 14 px para cualquier texto (etiquetas en mayúsculas, badges, encabezados de tabla, textos secundarios),
+    cuerpo 15 px, títulos más grandes. 14 px ÷ 1064 × 468 = 6,2 pt en el documento. Alto/ancho ≤ 1,05.
+    Si algo no entra, se quita contenido (columnas, filas, paneles), no se achica la letra.
+  - Los tokens de :root son el sistema visual del proyecto: se definen una vez en la pantalla de referencia
+    (marca del cliente si existe, si no este sistema neutro) y se copian idénticos en todas las pantallas.
+  - Los datos salen de la tabla de datos canónicos de la especificación: identificadores, fechas y horarios dentro
+    del período del ejemplo, conteos que suman, porcentajes recalculables. Nunca "Lorem ipsum".
+  - Cada acción visible corresponde al rol del usuario de la pantalla. Textos en el idioma del documento, sin "—".
+  - Nota "Datos ilustrativos" al pie. Nada del lienzo de presentación (barra de ruta, rótulos de dispositivo).
+-->
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#f6f7fb; --surface:#ffffff; --surface-2:#f1f2f7; --border:#e3e5ee;
+  --text:#171a26; --muted:#6b7080;
+  --primary:#433273; --primary-ink:#ffffff; --primary-dim:rgba(67,50,115,.10);
+  --success:#1f9d61; --warning:#c98a0b; --danger:#d43c4a; --info:#2f6fde;
+  --radius:10px; --font:'Inter',system-ui,sans-serif;
+  --shadow:0 1px 2px rgba(16,24,40,.06),0 4px 14px rgba(16,24,40,.06);
+  --canvas:#ffffff;
+}
+body.canvas{background:var(--canvas);color:var(--text);font-family:var(--font);font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased;padding:12px;width:1064px}
+.artboard{background:var(--bg);border:1px solid var(--border);border-radius:12px;overflow:hidden}
+.artboard--desktop{width:1040px}
+.spec-note{margin-top:8px;text-align:right;font-size:14px;font-weight:500;color:var(--muted)}
+
+/* Componentes */
+.nav{display:flex;align-items:center;gap:24px;padding:12px 24px;background:var(--surface);border-bottom:1px solid var(--border)}
+.logo{font-weight:700;font-size:18px;display:flex;align-items:center;gap:10px;white-space:nowrap}
+.logo::before{content:"";width:24px;height:24px;border-radius:6px;background:var(--primary)}
+.tabs{display:flex;gap:4px} .tabs a{padding:6px 12px;border-radius:8px;color:var(--muted);font-weight:500;font-size:15px;text-decoration:none;white-space:nowrap}
+.tabs a.on{background:var(--primary-dim);color:var(--primary)}
+.nav .right{margin-left:auto;display:flex;align-items:center;gap:12px;white-space:nowrap}
+.env{font-size:14px;font-weight:600;padding:3px 10px;border-radius:999px;background:var(--surface-2);color:var(--muted)}
+.role{font-size:14px;color:var(--muted)}
+.avatar{width:34px;height:34px;border-radius:50%;background:var(--primary-dim);color:var(--primary);font-weight:700;font-size:14px;display:flex;align-items:center;justify-content:center}
+.page{padding:22px 24px 24px}
+.page-head{display:flex;align-items:flex-end;justify-content:space-between;gap:24px;margin-bottom:18px}
+.page-head h1{font-size:26px;font-weight:700;line-height:1.25} .page-head p{color:var(--muted);margin-top:2px}
+.actions{display:flex;gap:10px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:38px;padding:0 16px;border-radius:8px;font-weight:600;font-size:14.5px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-family:var(--font);white-space:nowrap}
+.btn.primary{background:var(--primary);border-color:var(--primary);color:var(--primary-ink)}
+.grid{display:grid;gap:16px} .g3{grid-template-columns:repeat(3,1fr)} .g4{grid-template-columns:repeat(4,1fr)} .g-main{grid-template-columns:1.75fr 1fr}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow)}
+.card-h{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:13px 18px;border-bottom:1px solid var(--border);font-weight:600;font-size:16.5px}
+.card-h .muted{font-weight:400}
+.card-b{padding:16px 18px}
+.stat small{display:block;font-size:14px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.stat strong{display:block;font-size:30px;font-weight:700;margin:4px 0 2px;line-height:1.25}
+.stat span{font-size:14px;color:var(--muted)}
+.badge{display:inline-flex;align-items:center;gap:6px;padding:2px 9px;border-radius:999px;font-size:14px;font-weight:600;white-space:nowrap}
+.badge::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}
+.badge.ok{color:var(--success);background:rgba(31,157,97,.1)} .badge.warn{color:var(--warning);background:rgba(201,138,11,.12)}
+.badge.err{color:var(--danger);background:rgba(212,60,74,.1)} .badge.info{color:var(--info);background:rgba(47,111,222,.1)}
+table{width:100%;border-collapse:collapse}
+th{text-align:left;font-size:14px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:600;padding:10px 16px;border-bottom:1px solid var(--border);white-space:nowrap}
+td{padding:11px 16px;border-bottom:1px solid var(--border)} tr:last-child td{border-bottom:0}
+.num{text-align:right;white-space:nowrap}
+.list-item{display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid var(--border)} .list-item:last-child{border:0}
+.list-item .grow{flex:1} .muted{color:var(--muted);font-size:14px} .nw{white-space:nowrap}
+</style>
+</head>
+<body class="canvas">
+  <div class="artboard artboard--desktop">
+    <div class="nav">
+      <div class="logo">Proyecto</div>
+      <div class="tabs"><a class="on">Tablero</a><a>Órdenes</a><a>Clientes</a><a>Conciliación</a><a>Reportes</a></div>
+      <div class="right"><span class="env">Ambiente de pruebas</span><span class="role">Supervisor de operación</span><div class="avatar">MR</div></div>
+    </div>
+    <div class="page">
+      <div class="page-head">
+        <div><h1>Tablero de operación</h1><p>Martes 10/11/2026 · Actualizado a las 11:42</p></div>
+        <div class="actions"><button class="btn">Exportar</button><button class="btn primary">Nueva orden</button></div>
+      </div>
+      <div class="grid g4" style="margin-bottom:16px">
+        <div class="card card-b stat"><small>Órdenes del día</small><strong>1.248</strong><span>+8,2&nbsp;% respecto de ayer</span></div>
+        <div class="card card-b stat"><small>En revisión</small><strong>37</strong><span>12 con más de 2 horas</span></div>
+        <div class="card card-b stat"><small>Rechazadas</small><strong>23</strong><span>1,8&nbsp;% de las órdenes del día</span></div>
+        <div class="card card-b stat"><small>Volumen procesado</small><strong>USD 84.310</strong><span>Conciliado al 96&nbsp;%</span></div>
+      </div>
+      <div class="grid g-main">
+        <div class="card">
+          <div class="card-h">Órdenes recientes <span class="muted">Ver todas</span></div>
+          <table>
+            <tr><th>Orden</th><th>Cliente</th><th>Hora</th><th class="num">Monto</th><th>Estado</th></tr>
+            <tr><td>#10482</td><td>Distribuidora Norte</td><td>11:38</td><td class="num">USD 1.240</td><td><span class="badge ok">Completada</span></td></tr>
+            <tr><td>#10481</td><td>Agro Sur SA</td><td>11:31</td><td class="num">USD 860</td><td><span class="badge warn">En revisión</span></td></tr>
+            <tr><td>#10480</td><td>Logística Central</td><td>11:24</td><td class="num">USD 2.115</td><td><span class="badge info">Procesando</span></td></tr>
+            <tr><td>#10479</td><td>Comercial Este</td><td>11:17</td><td class="num">USD 410</td><td><span class="badge err">Rechazada</span></td></tr>
+            <tr><td>#10478</td><td>Ferretería Oeste</td><td>11:09</td><td class="num">USD 1.575</td><td><span class="badge ok">Completada</span></td></tr>
+          </table>
+        </div>
+        <div class="card">
+          <div class="card-h">Alertas <span class="muted">4 activas</span></div>
+          <div class="card-b" style="padding-top:4px;padding-bottom:4px">
+            <div class="list-item"><div class="grow">Notificaciones con reintentos<div class="muted">Agro Sur SA, 5 intentos fallidos</div></div><span class="badge err">Alta</span></div>
+            <div class="list-item"><div class="grow">Conciliación con diferencias<div class="muted">3 registros sin coincidencia</div></div><span class="badge warn">Media</span></div>
+            <div class="list-item"><div class="grow">Órdenes demoradas<div class="muted">12 en revisión hace más de 2 h</div></div><span class="badge warn">Media</span></div>
+            <div class="list-item"><div class="grow">Límite diario cercano<div class="muted">Logística Central, 92&nbsp;% usado</div></div><span class="badge info">Baja</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="spec-note">Datos ilustrativos</div>
+</body>
+</html>

@@ -1,0 +1,197 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="render-width" content="1060">
+<meta name="render-pad" content="24">
+<title>Módulos de la plataforma</title>
+<!--
+  PLANTILLA: diagrama de módulos de la plataforma (estilo propuesta SpaceDev).
+  Se inserta a 468 pt de ancho: render-width 1060 → 1 px = 0,44 pt.
+  Tamaños (no bajarlos): nombres de cajas, filas y almacenes 18 px (7,9 pt); etiquetas de flecha 16 px;
+  roles y descripciones 15 px (6,6 pt), que es el mínimo de cualquier texto. Alto/ancho ≤ 1,4.
+  Si algo no entra, se quita contenido (descripciones, roles, módulos secundarios), no se achica la letra.
+
+  Estructura (reglas de references/imagenes.md, sección "Módulos de la plataforma"):
+  - Sin título interno: el epígrafe del documento ya lo dice.
+  - Izquierda (.group #users): grupos de usuarios (.box), cada uno con sus roles debajo del nombre.
+  - Centro (.mono): el sistema, en flujo normal de arriba hacia abajo:
+      consola o interfaz (.row.role), capa de entrada a la que llega la flecha de los usuarios;
+      API (.row.role); módulo núcleo (.row.core); grilla de módulos de dominio (.mods > .mod);
+      workers (.row.workers) abajo. .row.cross queda disponible para algo transversal (acceso por roles, auditoría).
+  - La grilla son los módulos de dominio que nombra el texto del backend, no pasos del flujo ni capacidades sueltas.
+    2 columnas (repeat(2,1fr)); 3 solo si los nombres entran a 18 px sin cortarse.
+  - Derecha (.panel.ext + .sub): sistemas externos del cliente (proveedor de identidad, fuentes de datos, pasarelas),
+    cada uno con data-align="id" de lo que conecta para que la flecha quede recta. Ajustar a mano la altura del panel
+    para que cubra la última caja.
+  - Abajo (.store, data-below="mono"): almacenes con lo que realmente guardan según el texto.
+
+  Motor:
+  - Columnas en coordenadas absolutas dentro de .stage (left/top/width en style).
+  - data-align="id": centra verticalmente la caja con ese elemento.
+  - data-below="id" (+ data-gap): ubica la caja debajo de ese elemento. La altura del lienzo se ajusta sola.
+  - Conectores en LINKS (mismo motor que infraestructura-aws.html). Un tercer valor "#id" alinea el anclaje con ese elemento.
+    Las etiquetas de flechas verticales necesitan lx y ly: dejarlas a 10 px o más de las cajas.
+  - Si una caja desborda o falta un id, aparece un aviso rojo arriba a la izquierda: el PNG no se entrega así.
+  - Reemplazar todo el contenido de ejemplo por el del proyecto, en el idioma del documento y sin raya larga (em dash).
+-->
+<style>
+:root{
+  --ink:#16191f; --muted:#5f6b7a; --line:#4a5363; --accent:#5b3fe8;
+  --mod:#d4244f; --ext:#2f3a4a;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#fff;color:var(--ink);font-family:"Noto Sans","Inter","Liberation Sans",sans-serif;-webkit-font-smoothing:antialiased}
+.stage{position:relative;width:1060px;height:700px}
+.stage>*{position:absolute}
+
+.group{z-index:1;border:1.8px dashed #9aa3ad;border-radius:12px;padding:12px 10px;display:flex;flex-direction:column;gap:12px}
+.group>h4{font-size:16px;padding-left:4px}
+.box{background:#fff;border:2px solid #3b4350;border-radius:8px;padding:12px 12px;font-size:15px;color:var(--muted);line-height:1.45}
+.box>h5{font-size:18px;color:var(--ink);line-height:1.25;margin-bottom:4px}
+
+.panel{z-index:1;background:#fff;border:2px solid var(--c);border-radius:12px;overflow:hidden}
+.panel>h4{background:var(--c);color:#fff;text-align:center;font-size:17px;padding:10px}
+.panel.ext{--c:var(--ext)}
+.sub{z-index:3;background:#f7f8fa;border:1.6px solid #9aa3ad;border-radius:6px;padding:12px 12px;font-size:15px;color:var(--muted);line-height:1.4}
+.sub>b{display:block;font-size:18px;line-height:1.25;color:var(--ink);margin-bottom:2px}
+
+.mono{z-index:1;background:#fff;border:3px solid var(--accent);border-radius:14px;overflow:hidden}
+.mono>h4{background:var(--accent);color:#fff;text-align:center;font-size:18px;padding:11px}
+.mono>.body{padding:14px 16px 16px;display:flex;flex-direction:column;gap:12px}
+.row{border:1.6px solid var(--c);background:var(--bg);border-radius:8px;padding:11px 12px}
+.row>h5{font-size:18px;line-height:1.25;color:var(--t)}
+.row>p{font-size:15px;line-height:1.4;color:var(--muted);margin-top:2px}
+.row.role{--c:#8ea2e0;--bg:#eef2fc;--t:#2b3c8f}
+.row.core{--c:#f0a500;--bg:#fff8e6;--t:#8a4b00}
+.row.cross{--c:#8a929c;--bg:#f4f5f7;--t:#2f3640}
+.row.workers{--c:#2aa775;--bg:#ecf8f2;--t:#136b47}
+.mods{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+.mod{border:1.6px solid #dcd8ef;border-left:5px solid var(--mod);border-radius:8px;padding:11px 10px 11px 12px;display:flex;flex-direction:column;justify-content:center;font-size:15px;color:var(--muted);line-height:1.4}
+.mod>h5{font-size:18px;line-height:1.25;color:var(--ink);margin-bottom:2px}
+
+.store{z-index:3;background:#f7f8fa;border:1.6px solid #c9ced6;border-radius:6px;padding:12px 12px;font-size:15px;color:var(--muted);line-height:1.4}
+.store>b{display:block;font-size:18px;line-height:1.25;color:var(--ink);margin-bottom:2px}
+.store>b::before{content:"";display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--dot);margin-right:8px}
+
+svg.wires{position:absolute;left:0;top:0;z-index:2;overflow:visible}
+.lbl{z-index:4;font-size:16px;color:#3b4350;background:#fff;padding:0 4px;line-height:1.3;white-space:nowrap}
+.err{z-index:9;left:10px;top:10px;color:#c00;font:700 16px monospace;background:#fee;padding:6px}
+</style>
+</head>
+<body>
+<div class="stage" id="stage">
+
+  <!-- Izquierda: usuarios con sus roles -->
+  <div class="group" id="users" style="left:16px;top:16px;width:222px">
+    <h4>Usuarios</h4>
+    <div class="box" id="u-shops"><h5>Comercios clientes</h5>Administrador<br>Operador de pedidos</div>
+    <div class="box" id="u-support"><h5>Equipo de soporte</h5>Agente de soporte<br>Supervisor</div>
+  </div>
+
+  <!-- Centro: el sistema. Consola arriba (entrada), API, núcleo, módulos de dominio, workers abajo -->
+  <div class="mono" id="mono" style="left:300px;top:16px;width:424px">
+    <h4>Plataforma de pedidos</h4>
+    <div class="body">
+      <div class="row role" id="console"><h5>Consola web (React)</h5></div>
+      <div class="row role" id="api"><h5>API (NestJS)</h5></div>
+      <div class="row core" id="core"><h5>Cuentas y accesos</h5><p>comercios, usuarios y roles</p></div>
+      <div class="mods">
+        <div class="mod" id="m-catalog"><h5>Catálogo</h5>productos y precios</div>
+        <div class="mod" id="m-orders"><h5>Pedidos</h5>estados y seguimiento</div>
+        <div class="mod" id="m-stock"><h5>Inventario</h5>stock por depósito</div>
+        <div class="mod" id="m-payments"><h5>Pagos</h5>cobros y reembolsos</div>
+        <div class="mod" id="m-shipping"><h5>Envíos</h5>retiro y entrega</div>
+        <div class="mod" id="m-notify"><h5>Notificaciones</h5>correo y avisos</div>
+      </div>
+      <div class="row workers" id="worker"><h5>Workers (NestJS)</h5><p>colas, reintentos y tareas programadas</p></div>
+    </div>
+  </div>
+
+  <!-- Abajo: almacenes con lo que guardan -->
+  <div class="store" id="st-db" data-below="mono" data-gap="58" style="left:300px;width:204px;--dot:#c925d1"><b>PostgreSQL</b>cuentas, catálogo, pedidos y pagos</div>
+  <div class="store" id="st-files" data-below="mono" data-gap="58" style="left:520px;width:204px;--dot:#7aa116"><b>Amazon S3</b>comprobantes e imágenes</div>
+
+  <!-- Derecha: sistemas externos, alineados con lo que conectan -->
+  <div class="panel ext" id="ext" style="left:858px;top:16px;width:186px;height:591px"><h4>Sistemas externos</h4></div>
+  <div class="sub" id="x-idp" data-align="core" style="left:870px;width:162px"><b>Proveedor de identidad</b>inicio de sesión</div>
+  <div class="sub" id="x-pay" data-align="m-payments" style="left:870px;width:162px"><b>Pasarela de pagos</b>cobros con tarjeta</div>
+</div>
+
+<script>
+/* Conectores ortogonales anclados a ids.
+   from/to: ["id", "top|bottom|left|right", f, off]  o  [x, y] absoluto.
+     f = fracción a lo largo del lado (0..1, por defecto .5) o "#otro-id" para alinear con el centro de ese elemento.
+     off = desplazamiento en px a lo largo del lado (para dos flechas paralelas).
+   via: puntos intermedios absolutos; los tramos inicial y final se completan en ángulo recto.
+   mid: coordenada del tramo intermedio cuando ambos lados son paralelos.
+   label/lx/ly: texto; sin lx/ly va centrado sobre el tramo más largo; con lx y sin ly va sobre el tramo horizontal más largo. rot: texto vertical. ml: texto en dos líneas.
+   dash: línea punteada (control, despliegue, cifrado). noArrow: sin punta. Los cruces dibujan un salto. */
+const LINKS = [
+  {from:["users","right","#console"], to:["console","left"], label:"HTTPS", lx:243, ly:78},
+  {from:["x-idp","left"], to:["core","right"], label:"OIDC"},
+  {from:["m-payments","right"], to:["x-pay","left"], label:"API REST"},
+  {from:["mono","bottom","#st-db"], to:["st-db","top"], label:"SQL", lx:412, ly:625},
+  {from:["mono","bottom","#st-files"], to:["st-files","top"], label:"archivos", lx:632, ly:625},
+];
+</script>
+<script>
+(function(){
+  const S=document.getElementById("stage"), NS="http://www.w3.org/2000/svg", errs=[];
+  function rect(id){const e=document.getElementById(id); if(!e){errs.push("falta #"+id); return {x:0,y:0,w:0,h:0};}
+    const r=e.getBoundingClientRect(), s=S.getBoundingClientRect(); return {x:r.left-s.left,y:r.top-s.top,w:r.width,h:r.height};}
+  /* Posiciones dependientes: data-align (centro vertical) y data-below (debajo de otro elemento). */
+  S.querySelectorAll("[data-align],[data-below]").forEach(e=>{
+    if(e.dataset.align){const t=rect(e.dataset.align); e.style.top=(t.y+t.h/2-e.offsetHeight/2)+"px";}
+    if(e.dataset.below){const t=rect(e.dataset.below); e.style.top=(t.y+t.h+(+e.dataset.gap||30))+"px";} });
+  S.style.height=Math.max(...[...S.children].map(e=>e.offsetTop+e.offsetHeight))+10+"px";
+  const vert=s=>s==="top"||s==="bottom";
+  function end(spec){ if(typeof spec[0]==="number") return {p:spec,side:null};
+    const b=rect(spec[0]), side=spec[1], f=spec[2]??.5, off=spec[3]||0; let t;
+    if(typeof f==="string"){const r=rect(f.replace(/^#/,"")); t=vert(side)?r.x+r.w/2:r.y+r.h/2;} else t=vert(side)?b.x+b.w*f:b.y+b.h*f;
+    t+=off;
+    return {p: side==="top"?[t,b.y]: side==="bottom"?[t,b.y+b.h]: side==="left"?[b.x,t]:[b.x+b.w,t], side}; }
+  function route(L){ const a=end(L.from), b=end(L.to);
+    if(L.via){ const v=L.via, out=[a.p], f=v[0], l=v[v.length-1];
+      if(Math.abs(a.p[0]-f[0])>=1&&Math.abs(a.p[1]-f[1])>=1) out.push(vert(a.side)?[a.p[0],f[1]]:[f[0],a.p[1]]);
+      out.push(...v);
+      if(Math.abs(b.p[0]-l[0])>=1&&Math.abs(b.p[1]-l[1])>=1) out.push(vert(b.side)?[b.p[0],l[1]]:[l[0],b.p[1]]);
+      return [...out,b.p]; }
+    const [p1,p2]=[a.p,b.p], s1=a.side??(b.side&&vert(b.side)?"top":"left"), s2=b.side??s1;
+    if(Math.abs(p1[0]-p2[0])<1||Math.abs(p1[1]-p2[1])<1) return [p1,p2];
+    if(vert(s1)&&vert(s2)){const m=L.mid??(p1[1]+p2[1])/2; return [p1,[p1[0],m],[p2[0],m],p2];}
+    if(!vert(s1)&&!vert(s2)){const m=L.mid??(p1[0]+p2[0])/2; return [p1,[m,p1[1]],[m,p2[1]],p2];}
+    return vert(s1)?[p1,[p1[0],p2[1]],p2]:[p1,[p2[0],p1[1]],p2]; }
+  const paths=LINKS.map(route);
+  const svg=document.createElementNS(NS,"svg"); svg.setAttribute("class","wires");
+  svg.setAttribute("width",S.offsetWidth); svg.setAttribute("height",S.offsetHeight);
+  svg.innerHTML='<defs><marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10z" fill="#4a5363"/></marker><marker id="ahd" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10z" fill="#8a929c"/></marker></defs>';
+  const verts=[];
+  paths.forEach((pts,i)=>{ for(let k=1;k<pts.length;k++) if(Math.abs(pts[k-1][0]-pts[k][0])<1) verts.push({i,x:pts[k][0],y1:pts[k-1][1],y2:pts[k][1]}); });
+  paths.forEach((pts,i)=>{ const L=LINKS[i]; let d="M"+pts[0].join(",");
+    for(let k=1;k<pts.length;k++){ const [x1,y1]=pts[k-1],[x2,y2]=pts[k];
+      if(Math.abs(y1-y2)<1){ const dir=Math.sign(x2-x1);
+        verts.filter(v=>v.i!==i&&v.x>Math.min(x1,x2)+8&&v.x<Math.max(x1,x2)-8&&y1>Math.min(v.y1,v.y2)+2&&y1<Math.max(v.y1,v.y2)-2)
+          .map(v=>v.x).sort((a,b)=>(a-b)*dir).forEach(x=>{d+=` L${x-6*dir},${y1} A6,6 0 0 ${dir>0?1:0} ${x+6*dir},${y1}`;}); }
+      d+=" L"+x2+","+y2; }
+    const p=document.createElementNS(NS,"path"); p.setAttribute("d",d); p.setAttribute("fill","none");
+    p.setAttribute("stroke",L.dash?"#8a929c":"#4a5363"); p.setAttribute("stroke-width","1.8"); p.setAttribute("stroke-linejoin","round");
+    if(L.dash) p.setAttribute("stroke-dasharray","6 5");
+    if(!L.noArrow) p.setAttribute("marker-end",L.dash?"url(#ahd)":"url(#ah)");
+    svg.appendChild(p);
+    if(L.label){ const t=document.createElement("div"); t.className="lbl"+(L.ml?" ml":""); t.textContent=L.label;
+      let x=L.lx, y=L.ly;
+      if(x==null||y==null){ let best=-1, bx, by;
+        for(let k=1;k<pts.length;k++){ const h=Math.abs(pts[k][1]-pts[k-1][1])<1, len=Math.hypot(pts[k][0]-pts[k-1][0],pts[k][1]-pts[k-1][1]);
+          if((x==null||h)&&len>best){best=len; bx=(pts[k][0]+pts[k-1][0])/2; by=(pts[k][1]+pts[k-1][1])/2;} }
+        if(x==null){x=bx; y=by; t.style.transform="translate(-50%,-115%)";} else y=by-17; }
+      if(L.ml) t.style.width="80px", t.style.whiteSpace="normal", t.style.textAlign="center";
+      if(L.rot) t.style.transform="rotate(-90deg)", t.style.transformOrigin="left top";
+      t.style.left=x+"px"; t.style.top=y+"px"; S.appendChild(t); } });
+  S.appendChild(svg);
+  S.querySelectorAll(".box,.item,.sub,.mod,.row,.store,.panel").forEach(e=>{ if(e.scrollHeight>e.clientHeight+1||e.scrollWidth>e.clientWidth+1) errs.push("desborda #"+(e.id||e.textContent.trim().slice(0,20))); });
+  if(errs.length){const e=document.createElement("div"); e.className="err"; e.textContent=errs.join(" · "); S.appendChild(e);}
+})();
+</script>
+</body>
+</html>
